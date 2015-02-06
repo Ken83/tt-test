@@ -9,7 +9,7 @@
 static void setup(void) {}
 static void teardown(void) {}
 
-TEST("add() failed for typically input") {
+TEST("add() failed for typical input") {
 	assert_equal(3, add(1, 2));
 }
 
