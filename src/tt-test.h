@@ -7,10 +7,9 @@
 #include "tt-test.h"
 
 static void setup(void) {}
-
 static void teardown(void) {}
 
-TEST("add() 1 + 2 should be 3") {
+TEST("add() failed for typically input") {
 	assert_equal(3, add(1, 2));
 }
 
@@ -23,14 +22,14 @@ int main(void) {
 
 #include <stdio.h>
 
-#define MAX_TESTS 1024
-
+/* Generate function name with line no. TT_FUNC(xxx)(void) => xxx_000(void) */
 #define TT_FUNC(str) TT_FUNC_(str##_, __LINE__)
 #define TT_FUNC_(str, line) TT_FUNC__(str, line)
 #define TT_FUNC__(str, line) str##line
 
-static int tt_num_tests = 0;
-static int(*tt_func_array[MAX_TESTS])(void);
+#define TT_MAX_TEST_REGISTRATION 1024
+static int tt_num_registed_tests = 0;
+static int(*tt_registed_tests[TT_MAX_TEST_REGISTRATION])(void);
 
 /* gcc2.7 and later (and Clang) are available */
 #if defined(__GNUC__) && (__GNUC__ >= 3 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 7))
@@ -49,6 +48,7 @@ static int(*tt_func_array[MAX_TESTS])(void);
 	void(*TT_FUNC(tt_register))(void) = TT_FUNC(tt_constructor);
 #endif
 
+/* tt_constructor_000() will be called before main() and regist tt_caller_000() */
 #define TEST(mes)\
 static void TT_FUNC(tt_autogen_func)(const char*, int*);\
 int TT_FUNC(tt_caller)(void) {\
@@ -59,12 +59,13 @@ int TT_FUNC(tt_caller)(void) {\
 	return failed;\
 }\
 TT_ATTRIBUTE static void TT_FUNC(tt_constructor)(void) {\
-	if (tt_num_tests < MAX_TESTS)\
-		tt_func_array[tt_num_tests++] = TT_FUNC(tt_caller);\
+	if (tt_num_registed_tests < TT_MAX_TEST_REGISTRATION)\
+		tt_registed_tests[tt_num_registed_tests++] = TT_FUNC(tt_caller);\
 }\
 TT_SECTION \
 static void TT_FUNC(tt_autogen_func) (const char *tt_mes, int *tt_failed)
 
+/* Use this function in a TEST() */
 #define assert_equal(lval, rval)\
 do {\
 	if (lval == rval)\
@@ -75,12 +76,13 @@ do {\
 	return;\
 }while (0)
 
+/* Call order: run_all_tests_() => tt_caller_000() => tt_autogen_func_000() */
 static int run_all_tests_(const char *filename) {
 	int i, num_pass = 0;
-	for (i = 0; i < tt_num_tests; i++)
-		num_pass += !tt_func_array[i]();
-	printf("%s: %d/%d passed\n", filename, num_pass, tt_num_tests);
-	return !(num_pass == tt_num_tests);
+	for (i = 0; i < tt_num_registed_tests; i++)
+		num_pass += !tt_registed_tests[i]();
+	printf("%s: %d/%d passed\n", filename, num_pass, tt_num_registed_tests);
+	return !(num_pass == tt_num_registed_tests);
 }
 #define run_all_tests() run_all_tests_(TT_FILE)
 
