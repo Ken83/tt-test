@@ -21,6 +21,9 @@ int main(void) {
 #define TT_TEST_H
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <setjmp.h>
 
 /* Generate function name with line no. TT_FUNC(xxx)(void) => xxx_000(void) */
 #define TT_FUNC(str) TT_FUNC_(str##_, __LINE__)
@@ -30,6 +33,14 @@ int main(void) {
 #define TT_MAX_TEST_REGISTRATION 1024
 static int tt_num_registed_tests = 0;
 static int(*tt_registed_tests[TT_MAX_TEST_REGISTRATION])(void);
+static const char *tt_test_message;
+static jmp_buf tt_assert_jmpbuf;
+
+/* Catch SIGILL, SIGFPE (not for VC) or SIGSEGV */
+static void tt_handler_abort(int signal_id) {
+	printf("[%d] TEST(\"%s\") was aborted\n", signal_id, tt_test_message);
+	abort();
+}
 
 /* gcc2.7 and later (and Clang) are available */
 #if defined(__GNUC__) && (__GNUC__ >= 3 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 7))
@@ -50,20 +61,25 @@ static int(*tt_registed_tests[TT_MAX_TEST_REGISTRATION])(void);
 
 /* tt_constructor_000() will be called before main() and regist tt_caller_000() */
 #define TEST(mes)\
-static void TT_FUNC(tt_autogen_func)(const char*, int*);\
+static void TT_FUNC(tt_autogen_func)(void);\
 int TT_FUNC(tt_caller)(void) {\
-	int failed = 0;\
+	signal(SIGILL, &tt_handler_abort);\
+	signal(SIGFPE, &tt_handler_abort);\
+	signal(SIGSEGV, &tt_handler_abort);\
+	tt_test_message = mes;\
+	if (setjmp(tt_assert_jmpbuf) != 0)\
+		return 1;\
 	setup();\
-	TT_FUNC(tt_autogen_func)(mes, &failed);\
+	TT_FUNC(tt_autogen_func)();\
 	teardown();\
-	return failed;\
+	return 0;\
 }\
 TT_ATTRIBUTE static void TT_FUNC(tt_constructor)(void) {\
 	if (tt_num_registed_tests < TT_MAX_TEST_REGISTRATION)\
 		tt_registed_tests[tt_num_registed_tests++] = TT_FUNC(tt_caller);\
 }\
 TT_SECTION \
-static void TT_FUNC(tt_autogen_func) (const char *tt_mes, int *tt_failed)
+static void TT_FUNC(tt_autogen_func) (void)
 
 /* Use this function in a TEST() */
 #define assert_equal(lval, rval)\
@@ -71,9 +87,8 @@ do {\
 	if (lval == rval)\
 		break;\
 	printf("%s:%d: %s\n input:    %s\n actual:   %d\n expected: %d\n",\
-		TT_FILE, __LINE__, tt_mes, #rval, rval, lval);\
-	*tt_failed = 1;\
-	return;\
+		TT_FILE, __LINE__, tt_test_message, #rval, rval, lval);\
+	longjmp(tt_assert_jmpbuf, 1);\
 }while (0)
 
 /* Call order: run_all_tests_() => tt_caller_000() => tt_autogen_func_000() */
