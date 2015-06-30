@@ -15,7 +15,7 @@ tt-testは、C言語用のxUnitテストフレームワークです。
 
 ## 使い方
 ### 1. tt-test.hをダウンロードしてください。
-![tt-test.h](src/tt-test.h)
+![tt-test.h](tt-test.h)
 
 ### 2. プロダクトコードを用意してください。
 例: calc.c
