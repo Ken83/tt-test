@@ -94,6 +94,16 @@ TEST("test") {static int g[4096]; g[4096*4096] = 1;}
 int main(void) {return run_all_tests();}'
 expect[9]='[11] TEST("test") was aborted'
 
+# Check for assert_equal() args are executed just one time
+test[10]='#include "../tt-test.h"
+static void setup(void) {}
+static void teardown(void) {}
+int foo(void) {static int n = 0; return n++;}
+int bar(void) {static int n = 0; return n++;}
+TEST("test") {foo(); bar(); assert_equal(1, foo()); assert_equal(1, bar());}
+int main(void) {return run_all_tests();}'
+expect[10]=': 1/1 passed'
+
 for ((i = 0; i < ${#test[@]}; i++)) {
 	# Compile
 	echo -e "${test[i]}" | $CC 2> /dev/null
@@ -111,5 +121,6 @@ for ((i = 0; i < ${#test[@]}; i++)) {
 		echo test["$i"]: Fail
 	fi
 }
+
 rm a.out
 

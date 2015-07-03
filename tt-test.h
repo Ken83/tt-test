@@ -10,11 +10,11 @@ static void setup(void) {}
 static void teardown(void) {}
 
 TEST("add() failed for typical input") {
-	assert_equal(3, add(1, 2));
+assert_equal(3, add(1, 2));
 }
 
 int main(void) {
-	return run_all_tests();
+return run_all_tests();
 }
 */
 #ifndef TT_TEST_H
@@ -22,8 +22,8 @@ int main(void) {
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <signal.h>
 #include <setjmp.h>
+#include <signal.h>
 
 /* Generate function name with line no. TT_FUNC(xxx)(void) => xxx_000(void) */
 #define TT_FUNC(str) TT_FUNC_(str##_, __LINE__)
@@ -82,12 +82,13 @@ TT_SECTION \
 static void TT_FUNC(tt_autogen_func) (void)
 
 /* Use this function in a TEST() */
-#define assert_equal(lval, rval)\
+#define assert_equal(lexpr, rexpr)\
 do {\
-	if (lval == rval)\
+	int lval, rval;\
+	if ((lval = lexpr) == (rval = rexpr))\
 		break;\
 	printf("%s:%d: %s\n input:    %s\n actual:   %d\n expected: %d\n",\
-		TT_FILE, __LINE__, tt_test_message, #rval, rval, lval);\
+		TT_FILE, __LINE__, tt_test_message, #rexpr, rval, lval);\
 	longjmp(tt_assert_jmpbuf, 1);\
 }while (0)
 
@@ -102,3 +103,4 @@ static int run_all_tests_(const char *filename) {
 #define run_all_tests() run_all_tests_(TT_FILE)
 
 #endif
+
